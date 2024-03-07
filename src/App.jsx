@@ -1,6 +1,6 @@
 import './App.css'
 import DraggableShape from './Dragger'
-import Dragger from './dragger'
+import Dragger from './Dragger'
 
 export default function App() {
   return (
