@@ -2,76 +2,61 @@ import React, { useState } from 'react';
 
 const DraggableShape = () => {
   const [shapes, setShapes] = useState([]);
-  const [selectedShape, setSelectedShape] = useState(null);
   const [order, setOrder] = useState([]);
 
-  const [dragging, setDragging] = useState(null);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-
-  const handleMouseDown = (id, e) => {
-    const shape = shapes.find((s) => s.id === id);
-    if (shape) {
-      setDragging(id);
-      setOffset({
-        x: e.clientX - shape.left,
-        y: e.clientY - shape.top,
-      });
-    }
+  const handleDragStart = (e, id) => {
+    e.dataTransfer.setData('shapeId', id);
   };
 
-  const handleMouseMove = (e) => {
-    if (dragging !== null) {
-      setShapes((prevShapes) =>
-        prevShapes.map((shape) =>
-          shape.id === dragging
-            ? {
-                ...shape,
-                left: e.clientX - offset.x,
-                top: e.clientY - offset.y,
-              }
-            : shape
-        )
-      );
-
-      // Update the order based on the dragging sequence
-      setOrder((prevOrder) => {
-        const updatedOrder = [...prevOrder];
-        const draggedIndex = updatedOrder.findIndex((item) => item.id === dragging);
-
-        if (draggedIndex !== -1) {
-          // Move the dragged item to the end of the array
-          const [draggedItem] = updatedOrder.splice(draggedIndex, 1);
-          updatedOrder.push(draggedItem);
-        }
-
-        return updatedOrder;
-      });
-    }
+  const handleDragOver = (e) => {
+    e.preventDefault();
   };
 
-  const handleMouseUp = () => {
-    setDragging(null);
+  const handleDropLeft = (e) => {
+    e.preventDefault();
+    const shapeId = e.dataTransfer.getData('shapeId');
+    const { clientX, clientY } = e;
+    const newShape = {
+      id: shapeId,
+      left: clientX,
+      top: clientY,
+      type: shapeId,
+    };
+
+    setShapes((prevShapes) => [...prevShapes, newShape]);
+    setOrder((prevOrder) => [...prevOrder, { id: newShape.id, type: newShape.type }]);
   };
 
-  const addShape = () => {
-    if (selectedShape) {
-      const newShape = {
-        id: Date.now(),
-        left: 0,
-        top: 0,
-        type: selectedShape,
-      };
+  const handleDropMain = (e) => {
+    e.preventDefault();
+    const shapeId = e.dataTransfer.getData('shapeId');
+    const { clientX, clientY } = e;
 
-      setShapes((prevShapes) => [...prevShapes, newShape]);
-      setOrder((prevOrder) => [...prevOrder, { id: newShape.id, type: newShape.type }]);
-    }
+    const updatedShapes = shapes.map((shape) =>
+      shape.id === shapeId ? { ...shape, left: clientX, top: clientY } : shape
+    );
+
+    setShapes(updatedShapes);
+    setOrder(updatedShapes.map(({ id, type }) => ({ id, type })));
+  };
+
+  const addShape = (shapeType) => {
+    const newShape = {
+      id: Date.now().toString(),
+      left: 0,
+      top: 0,
+      type: shapeType,
+    };
+
+    setShapes((prevShapes) => [...prevShapes, newShape]);
+    setOrder((prevOrder) => [...prevOrder, { id: newShape.id, type: newShape.type }]);
   };
 
   const shapeOptions = ['circle', 'square', 'triangle'];
 
   return (
     <div style={{ display: 'flex' }}>
-      <div>
+      <div onDragOver={handleDragOver} onDrop={handleDropLeft}>
         {shapeOptions.map((shapeType) => (
           <div
             key={shapeType}
@@ -81,16 +66,12 @@ const DraggableShape = () => {
               backgroundColor: getShapeColor(shapeType),
               borderRadius: shapeType === 'circle' ? '50%' : '0',
               margin: '0 5px',
-              cursor: 'pointer',
+              cursor: 'grab',
             }}
-            onClick={() => setSelectedShape(shapeType)}
+            draggable
+            onDragStart={(e) => handleDragStart(e, shapeType)}
           ></div>
         ))}
-        <div>
-          <button onClick={addShape} disabled={!selectedShape}>
-            Add Shape
-          </button>
-        </div>
       </div>
       <div
         style={{
@@ -99,8 +80,8 @@ const DraggableShape = () => {
           height: '600px',
           border: '1px solid #ccc',
         }}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
+        onDragOver={handleDragOver}
+        onDrop={handleDropMain}
       >
         {shapes.map((shape) => (
           <div
@@ -115,7 +96,8 @@ const DraggableShape = () => {
               borderRadius: shape.type === 'circle' ? '50%' : '0',
               cursor: 'move',
             }}
-            onMouseDown={(e) => handleMouseDown(shape.id, e)}
+            draggable
+            onDragStart={(e) => handleDragStart(e, shape.id)}
           ></div>
         ))}
       </div>
